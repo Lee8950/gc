@@ -9,10 +9,13 @@ namespace ecl {
 
 namespace gc {
 
+constexpr uint64_t max_stack_depth = 1 << 8;
+
 class Allocator;
 
-
 struct AllocatedMemoryBlock {
+
+    AllocatedMemoryBlock();
 
     uint64_t start_address;
 
@@ -29,13 +32,23 @@ class GCMarker {
 
 private:
 
-    AllocatedMemoryBlock* root;
+    void* operator new(std::size_t) = delete;
+
+    void operator delete(void*) noexcept;
+
+    uint64_t *stack_size_pointer;
 
 public:
-    GCMarker();
+
+    int color = 0;
+
+    AllocatedMemoryBlock* root;
+
+    GCMarker(uint64_t *ssp, Allocator *allocator);
 
     ~GCMarker();
 
+    void root_register_helper(AllocatedMemoryBlock* new_amb);
 
 };
 
@@ -55,7 +68,13 @@ private:
 
     AllocatedMemoryBlock* createAMB(uint64_t pos, uint64_t size);
 
+    GCMarker GCMarkerStack[max_stack_depth];
+
+    uint64_t stack_ptr;
+
 public:
+
+    void register_gc_marker(GCMarker &gc_marker);
 
     Allocator(int Xms, int Xmx);
 
