@@ -5,6 +5,7 @@
 #include <atomic>
 #include <stdexcept>
 #include <vector>
+#include <stack>
 
 namespace ecl {
 
@@ -42,6 +43,8 @@ private:
 
     uint64_t *stack_size_pointer;
 
+    Allocator *allocator;
+
 public:
 
     int color = 0;
@@ -49,7 +52,7 @@ public:
     // STL is good
     std::vector<AllocatedMemoryBlock*> roots;
 
-    GCMarker(uint64_t *ssp, Allocator *allocator);
+    GCMarker(Allocator *allocator_);
 
     ~GCMarker();
 
@@ -73,13 +76,17 @@ private:
 
     AllocatedMemoryBlock* createAMB(uint64_t pos, uint64_t size);
 
-    GCMarker GCMarkerStack[max_stack_depth];
+    //GCMarker GCMarkerStack[max_stack_depth];
+
+    std::stack<GCMarker> GCMarkerStack;
 
     uint64_t stack_ptr;
 
 public:
 
     void register_gc_marker(GCMarker &gc_marker);
+
+    void pop_gc_marker();
 
     Allocator(int Xms, int Xmx);
 
