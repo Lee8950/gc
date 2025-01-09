@@ -25,7 +25,7 @@ void *ecl::gc::Allocator::gc_new(uint64_t size)
     //  Case 2: There are already allocated blocks.
     else
     {
-
+        
     }
 
     // Step 2: If any space was found, return a AMB managing this block.
@@ -38,7 +38,7 @@ void *ecl::gc::Allocator::gc_new(uint64_t size)
 }
 
 ecl::gc::AllocatedMemoryBlock::AllocatedMemoryBlock()
-    : next_block(nullptr)
+    : next_block(nullptr), color(0)
 {
 
 }
@@ -54,20 +54,11 @@ ecl::gc::AllocatedMemoryBlock *ecl::gc::Allocator::createAMB(uint64_t pos, uint6
 
 void ecl::gc::GCMarker::root_register_helper(ecl::gc::AllocatedMemoryBlock *new_amb)
 {
-    if(root == nullptr)
-    {
-        root = new_amb;
-    }
-    else
-    {
-        auto p = root;
-        while(p->next_block != nullptr) p = p->next_block;
-        p->next_block = new_amb;
-    }
+    roots.push_back(new_amb);
 }
 
 ecl::gc::GCMarker::GCMarker(uint64_t *ssp, Allocator *allocator)
- : stack_size_pointer(ssp), root(nullptr)
+ : stack_size_pointer(ssp)
 {
     *ssp += 1;
     allocator->register_gc_marker(*this);

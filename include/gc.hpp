@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <stdexcept>
+#include <vector>
 
 namespace ecl {
 
@@ -20,6 +21,9 @@ struct AllocatedMemoryBlock {
     uint64_t start_address;
 
     uint64_t block_size;
+
+    // 0 for not connected to root, will be gced
+    int color;
 
     AllocatedMemoryBlock *next_block;
 
@@ -42,7 +46,8 @@ public:
 
     int color = 0;
 
-    AllocatedMemoryBlock* root;
+    // STL is good
+    std::vector<AllocatedMemoryBlock*> roots;
 
     GCMarker(uint64_t *ssp, Allocator *allocator);
 
