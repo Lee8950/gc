@@ -78,7 +78,7 @@ private:
 
     //GCMarker GCMarkerStack[max_stack_depth];
 
-    std::stack<GCMarker> GCMarkerStack;
+    std::vector<GCMarker> GCMarkerStack;
 
     uint64_t stack_ptr;
 
