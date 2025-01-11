@@ -28,7 +28,18 @@ void *ecl::gc::Allocator::gc_new(uint64_t size)
     //  Case 2: There are already allocated blocks.
     else
     {
-        
+        auto p = allocated;
+        while(p->next_block != nullptr)
+        {
+            // Available
+            if(p->next_block->start_address - (p->start_address + p->block_size) <= size)
+            {
+                AllocatedMemoryBlock *amb = createAMB(p->start_address+p->block_size, size);
+                amb->next_block = p->next_block;
+                p->next_block = amb;
+            }
+            p = p->next_block;
+        }
     }
 
     // Step 2: If any space was found, return a AMB managing this block.
