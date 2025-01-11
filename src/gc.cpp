@@ -1,7 +1,7 @@
 #include <gc.hpp>
 
 ecl::gc::Allocator::Allocator(int Xms, int Xmx)
- : max_mem(Xmx), min_mem(Xms), cur_mem(Xms), allocated(nullptr), stack_ptr(-1)
+    : max_mem(Xmx), min_mem(Xms), cur_mem(Xms), allocated(nullptr), stack_ptr(-1)
 {
     mems = new unsigned char[cur_mem];
     allocated = new AllocatedMemoryBlock;
@@ -12,54 +12,78 @@ ecl::gc::Allocator::Allocator(int Xms, int Xmx)
 void *ecl::gc::Allocator::gc_new(uint64_t size)
 {
     // Step 0: If size > max_mem, then fail.
-    if(size > max_mem)
+    bool block_found = false;
+    AllocatedMemoryBlock *amb;
+    if (size > max_mem)
         throw std::runtime_error("Allocator out of memory. Consider raising Xmx of Allocator.");
     // Step 1: Find available space.
     //  Case 1: if none was allocated, then is simple.
-    if(allocated == nullptr)
+    if (allocated == nullptr)
     {
-        while(size<cur_mem) {
-            if(size * 2 > max_mem) size = max_mem;
-            else size *= 2;
+        while (size < cur_mem)
+        {
+            if (size * 2 > max_mem)
+                size = max_mem;
+            else
+                size *= 2;
         }
-        AllocatedMemoryBlock *amb = createAMB(0, size);
+        amb = createAMB(0, size);
         return amb->start_address + mems;
     }
     //  Case 2: There are already allocated blocks.
     else
     {
-        auto p = allocated;
-        while(p->next_block != nullptr)
+        AllocatedMemoryBlock *p = allocated;
+        while (p->next_block != nullptr)
         {
             // Available
-            if(p->next_block->start_address - (p->start_address + p->block_size) <= size)
+            if (p->next_block->start_address - (p->start_address + p->block_size) >= size)
             {
-                AllocatedMemoryBlock *amb = createAMB(p->start_address+p->block_size, size);
+                amb = createAMB(p->start_address + p->block_size, size);
                 amb->next_block = p->next_block;
                 p->next_block = amb;
+                block_found = true;
             }
             p = p->next_block;
+            if (block_found)
+                break;
         }
+        // Tail.
+        if (!block_found) 
+        {
+            if (cur_mem - (p->start_address + p->block_size) >= size) 
+            {
+                amb = createAMB(p->start_address + p->block_size, size);
+                amb->next_block = p->next_block;
+                p->next_block = amb;
+                block_found = true;
+            }
+        }
+        // None was found, go mark-sweep.
     }
 
-    // Step 2: If any space was found, return a AMB managing this block.
+    // Step 2: If any space was found, return a this block's address.
     //          If none was found, try collect.
+    if (block_found) 
+    {
+        return (void *)(amb->start_address);
+    }
 
     // Step 3: Mark-Sweep turn.
-    for(int i = 0; i < GCMarkerStack.size(); i++)
+    for (int i = 0; i < GCMarkerStack.size(); i++)
     {
-        for(int j = 0; j < GCMarkerStack[i].roots.size(); j++)
+        for (int j = 0; j < GCMarkerStack[i].roots.size(); j++)
         {
             // Mark
             GCMarkerStack[i].roots[j]->color = 1;
         }
     }
-    AllocatedMemoryBlock* p = allocated;
+    AllocatedMemoryBlock *p = allocated;
     // Sweep
-    while(p->next_block != nullptr)
+    while (p->next_block != nullptr)
     {
         // Not marked
-        if(p->next_block->color == 0)
+        if (p->next_block->color == 0)
         {
             // delete not marked block
             auto q = p->next_block;
@@ -74,7 +98,33 @@ void *ecl::gc::Allocator::gc_new(uint64_t size)
     }
 
     // Step 4: If collected, try step 1 again.
-    //          If none was found, expand mem space
+    //          If none was found, expand mem space // now we just throw
+    AllocatedMemoryBlock *p = allocated;
+    while (p->next_block != nullptr)
+    {
+        // Available
+        if (p->next_block->start_address - (p->start_address + p->block_size) >= size) 
+        {
+            amb = createAMB(p->start_address + p->block_size, size);
+            amb->next_block = p->next_block;
+            p->next_block = amb;
+            block_found = true;
+        }
+        p = p->next_block;
+        if (block_found)
+            break;
+    }
+    // Tail.
+    if (!block_found)
+    {
+        if (cur_mem - (p->start_address + p->block_size) >= size) 
+        {
+            amb = createAMB(p->start_address + p->block_size, size);
+            amb->next_block = p->next_block;
+            p->next_block = amb;
+            block_found = true;
+        }
+    }
 }
 
 ecl::gc::AllocatedMemoryBlock::AllocatedMemoryBlock()
