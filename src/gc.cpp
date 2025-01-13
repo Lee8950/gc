@@ -37,6 +37,7 @@ void *ecl::gc::Allocator::gc_new(uint64_t size)
                 AllocatedMemoryBlock *amb = createAMB(p->start_address+p->block_size, size);
                 amb->next_block = p->next_block;
                 p->next_block = amb;
+                break;
             }
             p = p->next_block;
         }
